@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RFID DTN · TinyML Dashboard</title>
+  <style>
+    :root {
+      --cream: #FDFBD4;
+      --cinnamon: #D47E30;
+      --nutmeg: #8D5A2B;
+      --brown: #825E34;
+      --ink: #30271F;
+      --muted: #857665;
+      --paper: #FFFDF4;
+      --line: #E8DCC8;
+      --green: #19A64A;
+      --green-bg: #E5F8E9;
+      --red: #E52B2B;
+      --red-bg: #FFE8E5;
+      --amber: #B56B14;
+      --amber-bg: #FFF1D8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--cream); color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    .shell { max-width: 1440px; margin: 0 auto; padding: 28px; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 24px; }
+    .eyebrow { color: var(--nutmeg); font-size: 11px; letter-spacing: .18em; font-weight: 800; text-transform: uppercase; }
+    h1 { margin: 6px 0 0; font-size: clamp(25px, 3vw, 38px); letter-spacing: -.04em; }
+    .subtitle { color: var(--muted); margin-top: 7px; font-size: 14px; }
+    .connection { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); font-size: 13px; font-weight: 750; white-space: nowrap; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 4px var(--red-bg); }
+    .connection.online .dot { background: var(--green); box-shadow: 0 0 0 4px var(--green-bg); }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(300px, .85fr); gap: 18px; }
+    .main-col, .side-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+    .card { background: var(--paper); border: 1px solid var(--line); border-radius: 18px; padding: 20px; box-shadow: 0 8px 24px rgba(87, 58, 28, .035); }
+    .card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+    h2 { font-size: 15px; margin: 0; letter-spacing: -.01em; }
+    .hint { font-size: 12px; color: var(--muted); }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .metric { border-radius: 14px; padding: 17px; background: #F7EFDF; min-width: 0; }
+    .metric:nth-child(2) { background: #F7E4D2; }
+    .metric:nth-child(3) { background: #EDE0D1; }
+    .metric:nth-child(4) { background: #E9E1D7; }
+    .metric-label { color: var(--brown); font-size: 12px; font-weight: 650; }
+    .metric-value { font-size: 30px; line-height: 1.2; margin-top: 9px; font-weight: 800; letter-spacing: -.04em; }
+    .metric-note { font-size: 11px; color: var(--muted); margin-top: 5px; }
+    .priority-list { display: flex; flex-direction: column; gap: 16px; }
+    .priority-row { display: grid; grid-template-columns: 92px 1fr 30px; align-items: center; gap: 12px; font-size: 13px; }
+    .priority-name { font-weight: 750; }
+    .bar { height: 8px; border-radius: 99px; background: #EFE7DA; overflow: hidden; }
+    .bar-fill { height: 100%; width: 0%; border-radius: inherit; transition: width .25s ease; }
+    .critical { color: var(--cinnamon); } .critical-fill { background: var(--cinnamon); }
+    .high { color: var(--nutmeg); } .high-fill { background: var(--nutmeg); }
+    .normal { color: var(--brown); } .normal-fill { background: var(--brown); }
+    .queue-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 530px; }
+    th { text-align: left; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 0 10px 12px; }
+    td { border-top: 1px solid #F0E8DC; padding: 13px 10px; font-size: 12px; }
+    td:first-child { font-weight: 750; }
+    .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 5px 8px; font-size: 10px; font-weight: 850; letter-spacing: .04em; }
+    .badge.CRITICAL { color: #A94D09; background: #FCE4CF; }
+    .badge.HIGH { color: #71431F; background: #EDE0D1; }
+    .badge.NORMAL { color: #6D543C; background: #E9E1D7; }
+    .empty { padding: 28px 10px; text-align: center; color: var(--muted); font-size: 13px; }
+    .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+    label { display: block; color: var(--muted); font-size: 11px; font-weight: 700; margin-bottom: 7px; }
+    select, button { font: inherit; }
+    select { background: white; border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; color: var(--ink); min-width: 120px; }
+    button { border: 0; border-radius: 10px; padding: 12px 15px; font-size: 12px; font-weight: 800; cursor: pointer; transition: transform .12s ease, opacity .12s ease; }
+    button:hover { transform: translateY(-1px); } button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    .btn-primary { color: white; background: var(--nutmeg); }
+    .btn-secondary { color: var(--brown); background: #F0E5D6; }
+    .btn-sync { color: white; background: var(--green); }
+    .btn-danger { color: var(--red); background: var(--red-bg); }
+    .small-status { border-radius: 12px; background: #F8F1E6; padding: 13px; margin-top: 15px; font-size: 12px; line-height: 1.55; color: var(--brown); overflow-wrap: anywhere; }
+    .small-status.error { color: #A51F1F; background: var(--red-bg); }
+    .small-status.success { color: #167A35; background: var(--green-bg); }
+    .event-list { display: flex; flex-direction: column; gap: 0; max-height: 400px; overflow: auto; }
+    .event { display: grid; grid-template-columns: 58px 9px 1fr; gap: 10px; align-items: start; padding: 12px 0; border-top: 1px solid #F0E8DC; }
+    .event:first-child { border-top: 0; }
+    .event-time { color: var(--muted); font-size: 10px; padding-top: 2px; font-variant-numeric: tabular-nums; }
+    .event-dot { width: 7px; height: 7px; margin-top: 4px; border-radius: 50%; background: var(--nutmeg); }
+    .event.success .event-dot { background: var(--green); }
+    .event.error .event-dot { background: var(--red); }
+    .event.warning .event-dot { background: var(--amber); }
+    .event-message { font-size: 12px; line-height: 1.45; }
+    .footer { color: var(--muted); font-size: 11px; text-align: center; padding: 20px 0 0; }
+    .toast { position: fixed; bottom: 20px; right: 20px; max-width: 340px; background: var(--ink); color: white; border-radius: 12px; padding: 13px 16px; font-size: 13px; box-shadow: 0 10px 30px #0002; display: none; z-index: 10; }
+    @media (max-width: 950px) { .layout { grid-template-columns: 1fr; } }
+    @media (max-width: 650px) {
+      .shell { padding: 16px; } header { align-items: flex-start; flex-direction: column; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .card { padding: 16px; } .priority-row { grid-template-columns: 78px 1fr 24px; }
+      .controls { align-items: stretch; } .controls > div, .controls select, .controls button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <div class="eyebrow">Edge computing · Store · Carry · Forward</div>
+        <h1>RFID DTN <span style="color:var(--cinnamon)">/</span> TinyML</h1>
+        <div class="subtitle">A minimal view of local classification, offline queueing and acknowledged delivery.</div>
+      </div>
+      <div id="connectionPill" class="connection"><span class="dot"></span><span id="connectionText">DISCONNECTED</span></div>
+    </header>
+
+    <section class="card" style="margin-bottom:18px">
+      <div class="card-head">
+        <h2>System overview</h2>
+        <span class="hint" id="lastSeen">Waiting for device data</span>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">Queued now</div><div class="metric-value" id="queuedCount">0</div><div class="metric-note">Waiting for delivery</div></div>
+        <div class="metric"><div class="metric-label">Delivered / ACK</div><div class="metric-value" id="deliveredCount">0</div><div class="metric-note">Confirmed by Arduino</div></div>
+        <div class="metric"><div class="metric-label">Tags queued</div><div class="metric-value" id="scannedCount">0</div><div class="metric-note">Observed by dashboard</div></div>
+        <div class="metric"><div class="metric-label">Last sync batch</div><div class="metric-value" id="syncCount">0</div><div class="metric-note">Records received</div></div>
+      </div>
+    </section>
+
+    <div class="layout">
+      <div class="main-col">
+        <section class="card">
+          <div class="card-head"><h2>Priority distribution</h2><span class="hint">Live EEPROM queue view</span></div>
+          <div class="priority-list">
+            <div class="priority-row"><span class="priority-name critical">Critical</span><div class="bar"><div id="criticalBar" class="bar-fill critical-fill"></div></div><strong id="criticalCount">0</strong></div>
+            <div class="priority-row"><span class="priority-name high">High</span><div class="bar"><div id="highBar" class="bar-fill high-fill"></div></div><strong id="highCount">0</strong></div>
+            <div class="priority-row"><span class="priority-name normal">Normal</span><div class="bar"><div id="normalBar" class="bar-fill normal-fill"></div></div><strong id="normalCount">0</strong></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>Queued messages</h2><span class="hint">Highest priority first</span></div>
+          <div class="queue-wrap">
+            <table>
+              <thead><tr><th>Sequence</th><th>RFID UID</th><th>Priority</th><th>Features</th><th>Action</th></tr></thead>
+              <tbody id="queueBody"><tr><td colspan="5" class="empty">Waiting for Arduino auto-sync.</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>Event timeline</h2><button class="btn-secondary" id="clearEventsBtn">Clear timeline</button></div>
+          <div id="eventList" class="event-list"><div class="empty">Events will appear here.</div></div>
+        </section>
+      </div>
+
+      <div class="side-col">
+        <section class="card">
+          <div class="card-head"><h2>Device connection</h2><span class="hint">Local USB serial</span></div>
+          <div class="controls">
+            <div style="flex:1;min-width:130px">
+              <label for="portSelect">SERIAL PORT</label>
+              <select id="portSelect" style="width:100%"><option value="COM3">COM3</option></select>
+            </div>
+            <div style="min-width:110px">
+              <label for="baudSelect">BAUD RATE</label>
+              <select id="baudSelect" style="width:100%"><option>9600</option></select>
+            </div>
+          </div>
+          <div class="controls" style="margin-top:12px">
+            <button id="connectBtn" class="btn-primary">Connect device</button>
+            <button id="disconnectBtn" class="btn-secondary">Disconnect</button>
+          </div>
+          <div id="deviceStatus" class="small-status">Dashboard is ready. Choose the Arduino COM port.</div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>Store & forward</h2><span class="hint">DTN delivery</span></div>
+          <p style="font-size:13px;line-height:1.6;color:var(--muted);margin:0 0 15px">SYNC and delivery are separate. When the Arduino reconnects, the dashboard automatically requests its EEPROM queue. Review the messages, then press <strong>ACK</strong> on each message only when you want the Arduino to remove it from EEPROM.</p>
+          <div id="syncStatus" class="small-status">Waiting for Arduino connection. SYNC runs automatically after reconnect.</div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>Feature legend</h2></div>
+          <div style="display:grid;gap:12px;font-size:12px">
+            <div><strong style="color:var(--nutmeg)">Severity</strong><div class="hint" style="margin-top:3px">0 low · 1 medium · 2 high</div></div>
+            <div><strong style="color:var(--nutmeg)">Deadline</strong><div class="hint" style="margin-top:3px">0 immediate · 1 soon · 2 later</div></div>
+            <div><strong style="color:var(--nutmeg)">Event type</strong><div class="hint" style="margin-top:3px">0 routine · 1 equipment · 2 critical alert</div></div>
+          </div>
+          <div class="small-status">RFID UIDs identify tags. The demo assigns simulated event features to known UIDs; the TinyML model classifies those features on the Arduino.</div>
+        </section>
+      </div>
+    </div>
+    <div class="footer">Runs locally on this computer · No cloud service required · Palette: cream, cinnamon and nutmeg</div>
+  </div>
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let toastTimer = null;
+    let lastConnected = null;
+    let seenEventKey = "";
+
+    function toast(message) {
+      const el = $("toast");
+      el.textContent = message;
+      el.style.display = "block";
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.style.display = "none", 3200);
+    }
+    async function api(path, method = "GET", body = null) {
+      const options = { method, headers: { "Content-Type": "application/json" } };
+      if (body) options.body = JSON.stringify(body);
+      const response = await fetch(path, options);
+      const data = await response.json();
+      if (!response.ok || data.ok === false) throw new Error(data.error || "Request failed");
+      return data;
+    }
+    function setStatus(message, type = "") {
+      $("deviceStatus").className = "small-status " + type;
+      $("deviceStatus").textContent = message;
+    }
+    function setSyncStatus(message, type = "") {
+      $("syncStatus").className = "small-status " + type;
+      $("syncStatus").textContent = message;
+    }
+    function renderPorts(ports) {
+      const select = $("portSelect");
+      const current = select.value;
+      const values = ports.map(p => p.device);
+      if (!values.length && current) values.push(current);
+      if (!values.length) values.push("COM3");
+      select.innerHTML = "";
+      values.forEach(port => {
+        const option = document.createElement("option");
+        option.value = port; option.textContent = port;
+        select.appendChild(option);
+      });
+      if (values.includes(current)) select.value = current;
+    }
+    function renderQueue(queue) {
+      const body = $("queueBody");
+      if (!queue.length) {
+        body.innerHTML = '<tr><td colspan="5" class="empty">No pending messages. The dashboard automatically syncs when Arduino reconnects.</td></tr>';
+        return;
+      }
+      body.innerHTML = "";
+      queue.forEach(record => {
+        const tr = document.createElement("tr");
+        const values = [
+          `#${record.seq}`,
+          record.uid,
+          record.priority,
+          `S${record.severity} · D${record.deadline} · E${record.event_type}`
+        ];
+        values.forEach((value, index) => {
+          const td = document.createElement("td");
+          if (index === 2) {
+            const badge = document.createElement("span");
+            badge.className = `badge ${record.priority}`;
+            badge.textContent = record.priority;
+            td.appendChild(badge);
+          } else {
+            td.textContent = value;
+          }
+          tr.appendChild(td);
+        });
+        const actionCell = document.createElement("td");
+        const ackButton = document.createElement("button");
+        ackButton.className = "btn-sync ack-button";
+        ackButton.textContent = "ACK";
+        ackButton.dataset.seq = record.seq;
+        ackButton.disabled = !window.dashboardConnected || (window.pendingAcks || []).includes(record.seq);
+        if ((window.pendingAcks || []).includes(record.seq)) ackButton.textContent = "WAITING…";
+        ackButton.addEventListener("click", async () => {
+          ackButton.disabled = true;
+          ackButton.textContent = "SENDING…";
+          try {
+            await api("/api/ack", "POST", { seq: record.seq });
+            toast(`ACK sent for message ${record.seq}`);
+            await refresh();
+          } catch (error) {
+            toast(error.message);
+            await refresh();
+          }
+        });
+        actionCell.appendChild(ackButton);
+        tr.appendChild(actionCell);
+        body.appendChild(tr);
+      });
+    }
+    function renderEvents(events) {
+      const list = $("eventList");
+      if (!events.length) {
+        list.innerHTML = '<div class="empty">No events yet.</div>';
+        return;
+      }
+      list.innerHTML = "";
+      events.forEach(event => {
+        const row = document.createElement("div");
+        row.className = `event ${event.kind || "info"}`;
+        const time = document.createElement("div"); time.className = "event-time"; time.textContent = event.time;
+        const dot = document.createElement("div"); dot.className = "event-dot";
+        const msg = document.createElement("div"); msg.className = "event-message"; msg.textContent = event.message;
+        row.append(time, dot, msg); list.appendChild(row);
+      });
+    }
+    function render(state) {
+      renderPorts(state.available_ports || []);
+      window.dashboardConnected = !!state.connected;
+      window.pendingAcks = state.pending_acks || [];
+      $("queuedCount").textContent = state.queue_count;
+      $("deliveredCount").textContent = state.acknowledged_total;
+      $("scannedCount").textContent = state.scanned_total;
+      $("syncCount").textContent = state.last_sync_total;
+      $("lastSeen").textContent = state.last_seen ? `Last serial activity ${state.last_seen}` : "Waiting for device data";
+
+      const counts = { CRITICAL: 0, HIGH: 0, NORMAL: 0 };
+      (state.queue || []).forEach(r => { if (counts[r.priority] !== undefined) counts[r.priority]++; });
+      const total = state.queue_count || 1;
+      $("criticalCount").textContent = counts.CRITICAL;
+      $("highCount").textContent = counts.HIGH;
+      $("normalCount").textContent = counts.NORMAL;
+      $("criticalBar").style.width = `${counts.CRITICAL / total * 100}%`;
+      $("highBar").style.width = `${counts.HIGH / total * 100}%`;
+      $("normalBar").style.width = `${counts.NORMAL / total * 100}%`;
+      renderQueue(state.queue || []);
+      renderEvents(state.events || []);
+
+      $("connectionPill").classList.toggle("online", !!state.connected);
+      $("connectionText").textContent = state.connected ? `CONNECTED · ${state.port || ""}` : "DISCONNECTED";
+      $("connectBtn").disabled = !!state.connected;
+      $("disconnectBtn").disabled = !state.connected;
+
+      if (state.connected && lastConnected !== true) setStatus(`Connected to ${state.port} at ${state.baud} baud. Close Arduino Serial Monitor while this dashboard is using the port.`, "success");
+      if (!state.connected && lastConnected === true) setStatus(state.error || "Arduino serial connection is disconnected.", "error");
+      if (state.error && !state.connected) setStatus(state.error, "error");
+      if (state.syncing) setSyncStatus("Automatic SYNC in progress — receiving the Arduino EEPROM queue.");
+      else if (state.connected && state.last_sync_total > 0) setSyncStatus(`Last automatic SYNC: ${state.last_sync_total} record(s). Use the ACK button beside a message to confirm delivery.`, "success");
+      else if (!state.connected) setSyncStatus("Connection disrupted. Keep Arduino powered; SYNC will start automatically when its serial port reconnects.", "error");
+      else setSyncStatus("Connected. Waiting for automatic SYNC results…");
+      lastConnected = !!state.connected;
+    }
+    async function refresh() {
+      try { render(await api("/api/state")); }
+      catch (error) { setStatus(`Dashboard API error: ${error.message}`, "error"); }
+    }
+    $("connectBtn").addEventListener("click", async () => {
+      try {
+        setStatus("Connecting to Arduino…");
+        const result = await api("/api/connect", "POST", { port: $("portSelect").value, baud: Number($("baudSelect").value) });
+        toast(result.message || "Connected");
+        await refresh();
+      } catch (error) { setStatus(error.message, "error"); toast(error.message); }
+    });
+    $("disconnectBtn").addEventListener("click", async () => {
+      try { await api("/api/disconnect", "POST", {}); setStatus("Serial connection closed.", ""); await refresh(); }
+      catch (error) { toast(error.message); }
+    });
+    $("clearEventsBtn").addEventListener("click", async () => {
+      await api("/api/clear-events", "POST", {});
+      toast("Timeline cleared");
+      refresh();
+    });
+    refresh();
+    setInterval(refresh, 1000);
+  </script>
+</body>
+</html>

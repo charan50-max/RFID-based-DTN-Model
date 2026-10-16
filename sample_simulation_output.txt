@@ -1,0 +1,21 @@
+=== RFID DTN + TinyML: OFFLINE SIMULATION ===
+Laptop link: DISCONNECTED
+Arduino power: ON (simulated)
+
+Scanned TAG-ROUTINE | UID=A1B2C3D2
+  TinyML prediction: NORMAL
+  Stored in simulated persistent queue.
+
+Scanned TAG-EQUIPMENT | UID=A1B2C3D1
+  TinyML prediction: HIGH
+  Stored in simulated persistent queue.
+
+Scanned TAG-CRITICAL | UID=A1B2C3D0
+  TinyML prediction: CRITICAL
+  Stored in simulated persistent queue.
+
+Laptop reconnects...
+Sending queued records in priority order (CRITICAL -> HIGH -> NORMAL).
+DELIVERED UID=A1B2C3D0 priority=CRITICAL
+DELIVERED UID=A1B2C3D1 priority=HIGH
+DELIVERED UID=A1B2C3D2 priority=NORMAL

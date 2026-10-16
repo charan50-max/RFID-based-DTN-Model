@@ -1,0 +1,94 @@
+{
+  "features": [
+    "severity",
+    "deadline",
+    "event_type"
+  ],
+  "classes": {
+    "1": "CRITICAL",
+    "2": "HIGH",
+    "3": "NORMAL"
+  },
+  "training_accuracy_on_synthetic_combinations": 1.0,
+  "training_note": "Small decision tree trained on 27 synthetic feature combinations. Not validated for real-world safety decisions.",
+  "tree": {
+    "feature": 0,
+    "threshold": 0.5,
+    "left": {
+      "feature": 1,
+      "threshold": 0.5,
+      "left": {
+        "feature": 2,
+        "threshold": 0.5,
+        "left": {
+          "class": 3
+        },
+        "right": {
+          "class": 2
+        }
+      },
+      "right": {
+        "class": 3
+      }
+    },
+    "right": {
+      "feature": 1,
+      "threshold": 0.5,
+      "left": {
+        "feature": 0,
+        "threshold": 1.5,
+        "left": {
+          "feature": 2,
+          "threshold": 1.5,
+          "left": {
+            "class": 2
+          },
+          "right": {
+            "class": 1
+          }
+        },
+        "right": {
+          "class": 1
+        }
+      },
+      "right": {
+        "feature": 1,
+        "threshold": 1.5,
+        "left": {
+          "feature": 0,
+          "threshold": 1.5,
+          "left": {
+            "class": 2
+          },
+          "right": {
+            "feature": 2,
+            "threshold": 0.5,
+            "left": {
+              "class": 2
+            },
+            "right": {
+              "class": 1
+            }
+          }
+        },
+        "right": {
+          "feature": 0,
+          "threshold": 1.5,
+          "left": {
+            "feature": 2,
+            "threshold": 1.5,
+            "left": {
+              "class": 3
+            },
+            "right": {
+              "class": 2
+            }
+          },
+          "right": {
+            "class": 2
+          }
+        }
+      }
+    }
+  }
+}
